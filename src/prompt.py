@@ -58,9 +58,9 @@ def main():
 
     idx = torch.tensor([encode(PROMPT)], dtype=torch.long, device=DEVICE)
 
-    # Initialize CodeCarbon tracker for measuring emissions during inference
+    # Initialize CodeCarbon tracker 
     tracker = OfflineEmissionsTracker(
-        country_iso_code="DNK",  # Denmark (3-letter ISO code)
+        country_iso_code="DNK", 
         output_dir=OUT_DIR,
         output_file="inference_emissions.csv",
         log_level="INFO",

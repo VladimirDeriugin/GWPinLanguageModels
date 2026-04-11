@@ -102,9 +102,9 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     set_seed(SEED)
 
-    # Initialize CodeCarbon tracker for measuring energy consumption and CO2 emissions
+    # Initialize CodeCarbon tracker 
     tracker = OfflineEmissionsTracker(
-        country_iso_code="DNK",  # Denmark (3-letter ISO code)
+        country_iso_code="DNK", 
         output_dir=OUT_DIR,
         output_file="emissions.csv",
         log_level="INFO",
