@@ -8,6 +8,7 @@ Source: https://github.com/karpathy/nanoGPT
 import os
 import pickle
 import torch
+from codecarbon import OfflineEmissionsTracker
 
 from model import GPT, GPTConfig
 
@@ -57,14 +58,35 @@ def main():
 
     idx = torch.tensor([encode(PROMPT)], dtype=torch.long, device=DEVICE)
 
+    # Initialize CodeCarbon tracker for measuring emissions during inference
+    tracker = OfflineEmissionsTracker(
+        country_iso_code="DNK",  # Denmark (3-letter ISO code)
+        output_dir=OUT_DIR,
+        output_file="inference_emissions.csv",
+        log_level="INFO",
+        measure_power_secs=1,  # frequent polling for short inference
+    )
+    tracker.start()
+
     out = model.generate(
         idx,
         max_new_tokens=MAX_NEW_TOKENS,
         temperature=TEMPERATURE,
         top_k=TOP_K
     )
+    
+    emissions = tracker.stop()
 
     print(decode(out[0].tolist()))
+
+    print(f"\n{'='*60}")
+    print(f"INFERENCE EMISSIONS SUMMARY (Denmark Grid)")
+    print(f"{'='*60}")
+    print(f"Generated tokens: {MAX_NEW_TOKENS}")
+    print(f"Energy consumed: {tracker._total_energy.kWh:.8f} kWh")
+    print(f"CO2 emissions per prompt: {emissions:.8f} kg CO2")
+    print(f"CO2 emissions per generated token: {(emissions / MAX_NEW_TOKENS):.8f} kg CO2/token")
+    print(f"{'='*60}")
 
 
 if __name__ == "__main__":
