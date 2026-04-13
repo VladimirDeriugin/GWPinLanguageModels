@@ -15,6 +15,7 @@ from dataclasses import asdict
 
 import numpy as np
 import torch
+from codecarbon import OfflineEmissionsTracker
 
 from model import GPTConfig, GPT
 
@@ -101,6 +102,16 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     set_seed(SEED)
 
+    # Initialize CodeCarbon tracker 
+    tracker = OfflineEmissionsTracker(
+        country_iso_code="DNK", 
+        output_dir=OUT_DIR,
+        output_file="emissions.csv",
+        log_level="INFO",
+        measure_power_secs=5,  # Measure power every 5 seconds
+    )
+    tracker.start()
+
     meta = load_meta(DATA_DIR)
     vocab_size = meta["vocab_size"] if meta and "vocab_size" in meta else 50304
 
@@ -126,9 +137,9 @@ def main():
     )
 
     # (optional) uncomment this for printing model size once
-    # print(f"Device: {DEVICE}")
-    # print(f"Model parameters: {model.get_num_params():,}")
-    # print(f"Training for {MAX_ITERS} iterations | batch={BATCH_SIZE} | block={BLOCK_SIZE}")
+    print(f"Device: {DEVICE}")
+    print(f"Model parameters: {model.get_num_params():,}")
+    print(f"Training for {MAX_ITERS} iterations | batch={BATCH_SIZE} | block={BLOCK_SIZE}")
 
     t0 = time.time()
     for it in range(MAX_ITERS + 1):
@@ -171,6 +182,19 @@ def main():
             print(f"iter {it:5d} | loss {loss.item():.4f}")
 
     print("Training completed.")
+
+    # Stop CodeCarbon tracker and save results
+    emissions = tracker.stop()
+    print(f"\n{'='*60}")
+    print(f"EMISSIONS SUMMARY (Denmark Grid)")
+    print(f"{'='*60}")
+    print(f"Energy consumed: {emissions:.6f} kWh")
+    print(f"CO2 emissions: {tracker.final_emissions:.6f} kg CO2")
+    print(f"CO2 per iteration: {(tracker.final_emissions / MAX_ITERS * 1000):.4f} g CO2")
+    print(f"Country: {tracker.country_name}")
+    print(f"Grid carbon intensity: {tracker.emissions_data.country_cie:.4f} kg CO2/kWh")
+    print(f"\nDetailed log saved to: {os.path.join(OUT_DIR, 'emissions.csv')}")
+    print(f"{'='*60}")
 
     # Save final checkpoint
     if SAVE_CHECKPOINT:
