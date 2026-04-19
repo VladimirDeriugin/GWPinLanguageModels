@@ -60,7 +60,7 @@ def main():
 
     # Initialize CodeCarbon tracker 
     tracker = OfflineEmissionsTracker(
-        country_iso_code="POL", 
+        country_iso_code="NOR", 
         output_dir=OUT_DIR,
         output_file="inference_emissions.csv",
         log_level="INFO",
