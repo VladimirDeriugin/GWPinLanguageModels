@@ -22,8 +22,8 @@ CKPT_PATH = os.path.join(OUT_DIR, "ckpt.pt")
 PROMPT = "To be, or not to be"
 MAX_NEW_TOKENS = 200
 
-TEMPERATURES = [0.2, 0.5, 0.8, 1.0, 1.3]
-TOP_K = 50
+TEMPERATURE = 1.0
+TOP_K_VALUES = [10, 20, 50, 100, 200]
 
 DEVICE = "cpu"
 # ----------------------------
@@ -58,7 +58,7 @@ def main():
 
     idx = torch.tensor([encode(PROMPT)], dtype=torch.long, device=DEVICE)
 
-    for temperature in TEMPERATURES:
+    for top_k in TOP_K_VALUES:
         tracker = OfflineEmissionsTracker(
             country_iso_code="DNK",
             output_dir=OUT_DIR,
@@ -73,16 +73,16 @@ def main():
         out = model.generate(
             idx,
             max_new_tokens=MAX_NEW_TOKENS,
-            temperature=temperature,
-            top_k=TOP_K
+            temperature=TEMPERATURE,
+            top_k=top_k
         )
 
         elapsed = time.time() - t0
         emissions = tracker.stop()
 
         print("\n" + "=" * 60)
-        print(f"TEMPERATURE: {temperature}")
-        print(f"TOP_K: {TOP_K}")
+        print(f"TEMPERATURE: {TEMPERATURE}")
+        print(f"TOP_K: {top_k}")
         print(f"Elapsed time: {elapsed:.4f} s")
         print(f"CO2 emissions per prompt: {emissions:.8f} kg CO2")
         print(f"CO2 emissions per generated token: {(emissions / MAX_NEW_TOKENS):.8f} kg CO2/token")
