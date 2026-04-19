@@ -7,6 +7,7 @@ Source: https://github.com/karpathy/nanoGPT
 
 import os
 import pickle
+import time
 import torch
 from codecarbon import OfflineEmissionsTracker
 
@@ -20,7 +21,8 @@ CKPT_PATH = os.path.join(OUT_DIR, "ckpt.pt")
 
 PROMPT = "To be, or not to be"
 MAX_NEW_TOKENS = 200
-TEMPERATURE = 1.0
+
+TEMPERATURES = [0.2, 0.5, 0.8, 1.0, 1.3]
 TOP_K = 50
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -36,16 +38,14 @@ def load_meta(data_dir: str):
 def main():
     ckpt = torch.load(CKPT_PATH, map_location=DEVICE)
 
-    # train.py should store config with model parameters and data_dir
     data_dir = ckpt["config"]["data_dir"]
     model_cfg = ckpt["config"]["model"]
 
     meta = load_meta(data_dir)
-    stoi = meta["stoi"]         # char to index mapping
-    itos = meta["itos"]         # index to char mapping
+    stoi = meta["stoi"]
+    itos = meta["itos"]
 
     def encode(s: str):
-        # map unknown chars to a safe fallback if needed
         return [stoi.get(ch, stoi[" "]) for ch in s]
 
     def decode(tokens):
@@ -58,35 +58,37 @@ def main():
 
     idx = torch.tensor([encode(PROMPT)], dtype=torch.long, device=DEVICE)
 
-    # Initialize CodeCarbon tracker 
-    tracker = OfflineEmissionsTracker(
-        country_iso_code="DNK", 
-        output_dir=OUT_DIR,
-        output_file="inference_emissions.csv",
-        log_level="INFO",
-        measure_power_secs=1,  # frequent polling for short inference
-    )
-    tracker.start()
+    for temperature in TEMPERATURES:
+        tracker = OfflineEmissionsTracker(
+            country_iso_code="DNK",
+            output_dir=OUT_DIR,
+            output_file="inference_emissions.csv",
+            log_level="INFO",
+            measure_power_secs=1,
+        )
 
-    out = model.generate(
-        idx,
-        max_new_tokens=MAX_NEW_TOKENS,
-        temperature=TEMPERATURE,
-        top_k=TOP_K
-    )
-    
-    emissions = tracker.stop()
+        tracker.start()
+        t0 = time.time()
 
-    print(decode(out[0].tolist()))
+        out = model.generate(
+            idx,
+            max_new_tokens=MAX_NEW_TOKENS,
+            temperature=temperature,
+            top_k=TOP_K
+        )
 
-    print(f"\n{'='*60}")
-    print(f"INFERENCE EMISSIONS SUMMARY (Denmark Grid)")
-    print(f"{'='*60}")
-    print(f"Generated tokens: {MAX_NEW_TOKENS}")
-    print(f"Energy consumed: {tracker._total_energy.kWh:.8f} kWh")
-    print(f"CO2 emissions per prompt: {emissions:.8f} kg CO2")
-    print(f"CO2 emissions per generated token: {(emissions / MAX_NEW_TOKENS):.8f} kg CO2/token")
-    print(f"{'='*60}")
+        elapsed = time.time() - t0
+        emissions = tracker.stop()
+
+        print("\n" + "=" * 60)
+        print(f"TEMPERATURE: {temperature}")
+        print(f"TOP_K: {TOP_K}")
+        print(f"Elapsed time: {elapsed:.4f} s")
+        print(f"CO2 emissions per prompt: {emissions:.8f} kg CO2")
+        print(f"CO2 emissions per generated token: {(emissions / MAX_NEW_TOKENS):.8f} kg CO2/token")
+        print("-" * 60)
+        print(decode(out[0].tolist()))
+        print("=" * 60)
 
 
 if __name__ == "__main__":
