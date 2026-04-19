@@ -25,7 +25,7 @@ MAX_NEW_TOKENS = 200
 TEMPERATURES = [0.2, 0.5, 0.8, 1.0, 1.3]
 TOP_K = 50
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "cpu"
 # ----------------------------
 
 
